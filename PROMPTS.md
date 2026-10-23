@@ -1,6 +1,7 @@
 # AuthenCrypt — Secure Document Sharing with Access Control and Audit Logging
 
 # AI Prompt Log
+
 This file records how AI assistance was used while building AuthenCrypt. Entries describe the development work, observed issues, and verification status honestly.
 
 ## Entry 1 — 2026-10-20 — Project Setup and Upload
@@ -15,7 +16,7 @@ This file records how AI assistance was used while building AuthenCrypt. Entries
 
 **Verification:** Local upload and metadata recording were observed.
 
-**Commit:** Pending — add the actual commit hash after committing this work.
+**Commit reference:** The current project baseline is recorded in commit `816fd87`. Individual feature commits were not created during this development period.
 
 ## Entry 2 — 2026-10-21 — Authentication
 
@@ -29,7 +30,7 @@ This file records how AI assistance was used while building AuthenCrypt. Entries
 
 **Verification:** Registration, duplicate-email rejection, login, session checks, and unauthenticated API rejection were observed locally.
 
-**Commit:** Pending — add the actual commit hash after committing this work.
+**Commit reference:** `816fd87` — initial project baseline. This is not a separate feature-specific commit.
 
 ## Entry 3 — 2026-10-21 — Document Ownership and Isolation
 
@@ -43,7 +44,7 @@ This file records how AI assistance was used while building AuthenCrypt. Entries
 
 **Verification:** Cross-account document listing isolation was observed locally. All permission combinations still require systematic testing.
 
-**Commit:** Pending — add the actual commit hash after committing this work.
+**Commit reference:** `816fd87` — initial project baseline. This is not a separate feature-specific commit.
 
 ## Entry 4 — 2026-10-22 — Audit Logging and Downloads
 
@@ -57,7 +58,7 @@ This file records how AI assistance was used while building AuthenCrypt. Entries
 
 **Verification:** An authenticated download succeeded, and an unauthenticated request was rejected. Complete audit coverage and denied-access logging require further verification.
 
-**Commit:** Pending — add the actual commit hash after committing this work.
+**Commit reference:** `816fd87` — initial project baseline. This is not a separate feature-specific commit.
 
 ## Entry 5 — 2026-10-22 — Git Safety and Repository Preparation
 
@@ -69,13 +70,13 @@ This file records how AI assistance was used while building AuthenCrypt. Entries
 
 **What I did:** Configured Git name and email, checked the staging status, and verified ignore rules for `.env`, `dev.db`, `private_uploads`, `download-test.txt`, and `prisma/schema.backup.prisma`.
 
-**Verification:** `git check-ignore -v` confirmed that the listed paths are ignored. No commit has been created yet.
+**Verification:** `git check-ignore -v` confirmed that the listed paths are ignored. The initial local Git commit was created successfully as `816fd87`. No push to GitHub has been performed.
 
-**Commit:** Pending — add the actual commit hash after committing this work.
+**Commit reference:** `816fd87` — initial project commit.
 
 ## Notes
 
 - This log records work and tests observed so far; it does not claim that every security requirement is complete.
-- Update this file as development continues.
-- Replace pending commit references with real commit hashes when commits are created.
+- The listed commit is the initial project baseline, not an individual commit for each feature.
+- Update this file as development continues and add a new commit reference after making the corresponding commit.
 - Add further entries for permission changes, authorization tests, deployment, and any bugs or corrections encountered.
