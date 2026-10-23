@@ -1,0 +1,60 @@
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String               @id @default(cuid())
+  name         String
+  email        String               @unique
+  passwordHash String
+  role         String               @default("USER")
+  createdAt    DateTime             @default(now())
+
+  documents    Document[]
+  permissions  DocumentPermission[] @relation("PermissionRecipient")
+  granted      DocumentPermission[] @relation("PermissionGrantedBy")
+}
+
+model Document {
+  id           String               @id @default(cuid())
+  originalName String
+  ownerId      String
+  storedName   String               @unique
+  contentType  String
+  size         Int
+  uploadedAt   DateTime             @default(now())
+
+  owner        User                 @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  permissions  DocumentPermission[]
+}
+
+model DocumentPermission {
+  id          String   @id @default(cuid())
+  documentId  String
+  userId      String
+  permission  String   @default("READ")
+  grantedById String
+  createdAt   DateTime @default(now())
+
+  document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  user        User     @relation("PermissionRecipient", fields: [userId], references: [id], onDelete: Cascade)
+  grantedBy   User     @relation("PermissionGrantedBy", fields: [grantedById], references: [id], onDelete: Restrict)
+
+  @@unique([documentId, userId])
+  @@index([userId])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  action     String
+  documentId String?
+  fileName   String?
+  actor      String   @default("local-user")
+  createdAt  DateTime @default(now())
+}
