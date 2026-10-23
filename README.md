@@ -34,10 +34,8 @@ AuthenCrypt is a document-sharing web application designed to protect private fi
 
 ### 1. Clone the repository
 
-After the repository is pushed and its visibility is confirmed, replace `https://github.com/Ishu-Kakaraparthi/AuthenCrypt` with the actual repository URL.
-
 ```bash
-git clone YOUR_REPOSITORY_URL
+git clone https://github.com/Ishu-Kakaraparthi/AuthenCrypt
 cd authencrypt
 ```
 
