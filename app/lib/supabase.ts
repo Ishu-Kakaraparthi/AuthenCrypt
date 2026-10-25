@@ -10,7 +10,12 @@ if (!supabaseUrl || !supabaseServiceRoleKey) {
     "Supabase storage environment variables are missing."
   );
 }
-
+console.log("Supabase URL diagnostic:", {
+  configured: Boolean(supabaseUrl),
+  startsWithHttps: supabaseUrl?.startsWith("https://"),
+  hasStorageSuffix: supabaseUrl?.includes("/storage/v1"),
+  hasWhitespace: supabaseUrl !== supabaseUrl?.trim(),
+});
 const supabase = createClient(
   supabaseUrl,
   supabaseServiceRoleKey,
