@@ -1,10 +1,11 @@
 
 import { NextRequest, NextResponse } from "next/server";
-import { mkdir, writeFile, unlink } from "node:fs/promises";
-import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { jwtVerify } from "jose";
 import prisma from "@/app/lib/prisma";
+import supabase from "@/app/lib/supabase";
+
+
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
@@ -22,9 +23,12 @@ const EXTENSIONS: Record<string, string> = {
   "text/plain": ".txt",
 };
 
+const BUCKET = "authencrypt-documents";
+
 export async function POST(request: NextRequest) {
-  let savedPath: string | null = null;
+  let storedName: string | null = null;
   let documentId: string | null = null;
+  let storageUploaded = false;
 
   try {
     // 1. Verify the login session.
@@ -40,7 +44,6 @@ export async function POST(request: NextRequest) {
 
     if (!secret || !/^[a-f0-9]{64}$/i.test(secret)) {
       console.error("SESSION_SECRET is missing or invalid.");
-
       return NextResponse.json(
         { error: "Server session configuration error." },
         { status: 500 }
@@ -74,7 +77,7 @@ export async function POST(request: NextRequest) {
     // 2. Confirm that the user still exists.
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true ,email: true},
+      select: { id: true, email: true },
     });
 
     if (!user) {
@@ -119,21 +122,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 4. Save the file under a random server-generated name.
+    // 4. Upload to the private Supabase bucket.
     const bytes = Buffer.from(await file.arrayBuffer());
-    const storedName = `${randomUUID()}${EXTENSIONS[file.type]}`;
-    const uploadDir = path.join(process.cwd(), "private_uploads");
+    storedName = `${randomUUID()}${EXTENSIONS[file.type]}`;
 
-    await mkdir(uploadDir, { recursive: true });
+    const { error: uploadError } = await supabase.storage
+      .from(BUCKET)
+      .upload(storedName, bytes, {
+        contentType: file.type,
+        upsert: false,
+      });
 
-    savedPath = path.join(uploadDir, storedName);
+    if (uploadError) {
+      console.error("Supabase storage upload failed:", uploadError.message);
+      return NextResponse.json(
+        { error: "Could not upload the file to secure storage." },
+        { status: 500 }
+      );
+    }
 
-    await writeFile(savedPath, bytes, {
-      flag: "wx",
-      mode: 0o600,
-    });
+    storageUploaded = true;
 
-    // 5. Associate the document with the logged-in user.
+    // 5. Save document metadata and ownership.
     const document = await prisma.document.create({
       data: {
         originalName: file.name,
@@ -146,7 +156,7 @@ export async function POST(request: NextRequest) {
 
     documentId = document.id;
 
-    // 6. Record who uploaded the document.
+    // 6. Record the upload in the audit trail.
     await prisma.auditLog.create({
       data: {
         action: "DOCUMENT_UPLOADED",
@@ -172,14 +182,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Upload failed:", error);
 
-    if (savedPath) {
-      try {
-        await unlink(savedPath);
-      } catch (cleanupError) {
-        console.error("File cleanup failed:", cleanupError);
-      }
-    }
-
+    // Roll back database metadata if it was created.
     if (documentId) {
       try {
         await prisma.document.delete({
@@ -187,6 +190,21 @@ export async function POST(request: NextRequest) {
         });
       } catch (cleanupError) {
         console.error("Document cleanup failed:", cleanupError);
+      }
+    }
+
+    // Remove the stored object if a later step failed.
+    if (storedName && storageUploaded) {
+      try {
+        const { error } = await supabase.storage
+          .from(BUCKET)
+          .remove([storedName]);
+
+        if (error) {
+          console.error("Storage cleanup failed:", error.message);
+        }
+      } catch (cleanupError) {
+        console.error("Storage cleanup failed:", cleanupError);
       }
     }
 

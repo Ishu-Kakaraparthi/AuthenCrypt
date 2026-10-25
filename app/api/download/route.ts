@@ -2,13 +2,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify } from "jose";
 import prisma from "@/app/lib/prisma";
-import path from "path";
-import { readFile } from "fs/promises";
-export async function GET(request: NextRequest) {
-  let actorEmail = "unauthenticated";
-  let documentId: string | null = null;
+import supabase from "@/app/lib/supabase";
 
+
+const BUCKET = "authencrypt-documents";
+
+export async function GET(request: NextRequest) {
   try {
+    // 1. Verify the login session.
     const token = request.cookies.get("auth_session")?.value;
     const secret = process.env.SESSION_SECRET;
 
@@ -26,21 +27,33 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const { payload } = await jwtVerify(
-      token,
-      Buffer.from(secret, "hex"),
-      { algorithms: ["HS256"] }
-    );
+    let userId: string;
 
-    if (!payload.sub) {
+    try {
+      const { payload } = await jwtVerify(
+        token,
+        Buffer.from(secret, "hex"),
+        { algorithms: ["HS256"] }
+      );
+
+      if (!payload.sub) {
+        return NextResponse.json(
+          { error: "Invalid session." },
+          { status: 401 }
+        );
+      }
+
+      userId = payload.sub;
+    } catch {
       return NextResponse.json(
-        { error: "Invalid session." },
+        { error: "Invalid or expired session." },
         { status: 401 }
       );
     }
 
+    // 2. Confirm that the user still exists.
     const user = await prisma.user.findUnique({
-      where: { id: payload.sub },
+      where: { id: userId },
       select: { id: true, email: true },
     });
 
@@ -51,8 +64,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    actorEmail = user.email;
-    documentId = request.nextUrl.searchParams.get("id");
+    // 3. Find the requested document and the user's permission.
+    const documentId = request.nextUrl.searchParams.get("id");
 
     if (!documentId) {
       return NextResponse.json(
@@ -79,15 +92,20 @@ export async function GET(request: NextRequest) {
     }
 
     const isOwner = document.ownerId === user.id;
-    const hasSharedAccess = document.permissions.length > 0;
+    const hasReadPermission = document.permissions.some(
+      (permission) => permission.permission === "READ"
+    );
+    const hasWritePermission = document.permissions.some(
+      (permission) => permission.permission === "WRITE"
+    );
 
-    if (!isOwner && !hasSharedAccess) {
+    if (!isOwner && !hasReadPermission && !hasWritePermission) {
       await prisma.auditLog.create({
         data: {
           action: "DOCUMENT_ACCESS_DENIED",
           documentId: document.id,
           fileName: document.originalName,
-          actor: actorEmail,
+          actor: user.email,
         },
       });
 
@@ -97,21 +115,27 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const uploadDirectory = path.resolve(process.cwd(), "private_uploads");
-    const filePath = path.resolve(uploadDirectory, document.storedName);
+    // 4. Download the file from the private Supabase bucket.
+    const { data: fileBlob, error: downloadError } =
+      await supabase.storage
+        .from(BUCKET)
+        .download(document.storedName);
 
-    if (
-      path.dirname(filePath) !== uploadDirectory ||
-      path.basename(document.storedName) !== document.storedName
-    ) {
+    if (downloadError || !fileBlob) {
+      console.error(
+        "Supabase storage download failed:",
+        downloadError?.message
+      );
+
       return NextResponse.json(
-        { error: "Invalid stored file path." },
-        { status: 400 }
+        { error: "Stored document could not be retrieved." },
+        { status: 502 }
       );
     }
 
-    const fileBuffer = await readFile(filePath);
+    const fileBuffer = Buffer.from(await fileBlob.arrayBuffer());
 
+    // 5. Record the successful download.
     await prisma.auditLog.create({
       data: {
         action: "DOCUMENT_DOWNLOADED",
@@ -125,9 +149,9 @@ export async function GET(request: NextRequest) {
       status: 200,
       headers: {
         "Content-Type": document.contentType,
-        "Content-Disposition": `attachment; filename="${encodeURIComponent(
+        "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(
           document.originalName
-        )}"`,
+        )}`,
         "Content-Length": String(fileBuffer.length),
         "X-Content-Type-Options": "nosniff",
         "Cache-Control": "private, no-store",
