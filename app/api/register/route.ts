@@ -4,7 +4,6 @@ import bcrypt from "bcryptjs";
 import { createHash, randomBytes } from "crypto";
 import prisma from "@/app/lib/prisma";
 
-export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   try {

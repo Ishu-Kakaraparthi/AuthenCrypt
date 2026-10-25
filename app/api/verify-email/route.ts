@@ -3,7 +3,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { createHash } from "crypto";
 import prisma from "@/app/lib/prisma";
 
-export const runtime = "nodejs";
 
 export async function GET(request: NextRequest) {
   try {
