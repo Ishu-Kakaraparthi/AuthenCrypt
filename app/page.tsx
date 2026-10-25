@@ -66,8 +66,38 @@ const THEME_PRESETS: { name: string; theme: ThemeSettings }[] = [
   { name: "Blue & Mist", theme: { sidebar: "#dce9f5", content: "#f4f7fb", surface: "#ffffff", text: "#1e293b", muted: "#64748b", border: "#dbe4ef", primary: "#285b91", primaryHover: "#1e456f", accent: "#dceafb", input: "#ffffff", hover: "#edf4fc" } },
   { name: "Lavender & Ivory", theme: { sidebar: "#eae2f4", content: "#faf7fc", surface: "#ffffff", text: "#30253d", muted: "#71627f", border: "#e4d9ef", primary: "#6b4790", primaryHover: "#50336d", accent: "#eee5fa", input: "#ffffff", hover: "#f5effb" } },
   { name: "Sand & White", theme: { sidebar: "#eee4d5", content: "#fbfaf7", surface: "#ffffff", text: "#3c3328", muted: "#786d5e", border: "#e7ddcf", primary: "#805b32", primaryHover: "#624324", accent: "#f3e6d2", input: "#ffffff", hover: "#f8f0e5" } },
-      { name: "Light Mode", theme: { sidebar: "#ffffff", content: "#f5f7fa", surface: "#ffffff", text: "#111827", muted: "#6b7280", border: "#e5e7eb", primary: "#315c49", primaryHover: "#264a39", accent: "#e8f2ec", input: "#ffffff", hover: "#f3f4f6" } },
-  { name: "Dark Mode", theme: { sidebar: "#111827", content: "#0b0f14", surface: "#1f2937", text: "#f9fafb", muted: "#9ca3af", border: "#374151", primary: "#65c995", primaryHover: "#83ddb0", accent: "#263a32", input: "#111827", hover: "#293548" } },
+      {
+  name: "Black & White",
+  theme: {
+    sidebar: "#000000",
+    content: "#111111",
+    surface: "#1a1a1a",
+    text: "#ffffff",
+    muted: "#b3b3b3",
+    border: "#333333",
+    primary: "#ffffff",
+    primaryHover: "#e6e6e6",
+    accent: "#292929",
+    input: "#111111",
+    hover: "#262626",
+  },
+},
+{
+  name: "White & Black",
+  theme: {
+    sidebar: "#ffffff",
+    content: "#f5f5f5",
+    surface: "#ffffff",
+    text: "#000000",
+    muted: "#555555",
+    border: "#d9d9d9",
+    primary: "#000000",
+    primaryHover: "#333333",
+    accent: "#eeeeee",
+    input: "#ffffff",
+    hover: "#f0f0f0",
+  },
+},
 ];
 
 
