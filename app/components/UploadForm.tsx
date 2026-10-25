@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useRef, useState } from "react";
@@ -104,7 +103,6 @@ export default function UploadForm({
         inputRef.current.value = "";
       }
 
-      // Upload succeeded. Refreshing the dashboard is a separate action.
       try {
         onUploadSuccess();
       } catch (refreshError) {
@@ -119,16 +117,32 @@ export default function UploadForm({
   }
 
   return (
-    <section className="rounded-2xl border border-[#dce8df] bg-white p-5 shadow-sm sm:p-6">
+    <section
+      className="rounded-2xl border p-5 shadow-sm sm:p-6"
+      style={{
+        backgroundColor: "var(--app-surface, #ffffff)",
+        borderColor: "var(--app-border, #e2e8f0)",
+        color: "var(--app-text, #1e293b)",
+      }}
+    >
       <div className="flex items-start gap-3">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#e9f4ec] text-xl">
+        <div
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-xl"
+          style={{
+            backgroundColor: "var(--app-accent, #e5f0e3)",
+            color: "var(--app-primary, #315c49)",
+          }}
+        >
           <span aria-hidden="true">↑</span>
         </div>
 
         <div>
-          <h2 className="text-lg font-bold text-[#253d30]">
+          <h2 className="text-lg font-bold" style={{ color: "var(--app-text, #1e293b)" }}>
             Upload a document
           </h2>
+          <p className="mt-1 text-sm" style={{ color: "var(--app-muted, #64748b)" }}>
+            Securely add a document to your workspace.
+          </p>
         </div>
       </div>
 
@@ -170,35 +184,51 @@ export default function UploadForm({
           tabIndex={loading ? -1 : 0}
           aria-label="Choose a file or drag and drop it here"
           className={`cursor-pointer rounded-2xl border-2 border-dashed p-7 text-center transition sm:p-9 ${
-            dragging
-              ? "border-[#477b58] bg-[#edf7ef]"
-              : "border-[#cbdccf] bg-[#f8fbf8] hover:border-[#7da88a] hover:bg-[#f1f7f2]"
-          } ${loading ? "cursor-not-allowed opacity-60" : ""}`}
+            loading ? "cursor-not-allowed opacity-60" : ""
+          }`}
+          style={{
+            borderColor: dragging
+              ? "var(--app-primary, #315c49)"
+              : "var(--app-border, #e2e8f0)",
+            backgroundColor: dragging
+              ? "var(--app-accent, #e5f0e3)"
+              : "var(--app-input, #ffffff)",
+          }}
         >
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#e5f0e7] text-2xl text-[#477b58]">
+          <div
+            className="mx-auto flex h-12 w-12 items-center justify-center rounded-full text-2xl"
+            style={{
+              backgroundColor: "var(--app-accent, #e5f0e3)",
+              color: "var(--app-primary, #315c49)",
+            }}
+          >
             <span aria-hidden="true">⇧</span>
           </div>
 
-          <p className="mt-3 font-semibold text-[#304a38]">
+          <p className="mt-3 font-semibold" style={{ color: "var(--app-text, #1e293b)" }}>
             {file ? "File selected" : "Drag and drop your file here"}
           </p>
 
-          <p className="mt-1 text-sm text-[#718176]">
+          <p className="mt-1 text-sm" style={{ color: "var(--app-muted, #64748b)" }}>
             or click to browse your computer
           </p>
 
           {file && (
-            <div className="mx-auto mt-4 max-w-full rounded-xl border border-[#dce8df] bg-white px-4 py-3 text-left sm:max-w-md">
-              <p className="truncate text-sm font-semibold text-[#304a38]">
-                {file.name}
-              </p>
-              <p className="mt-1 text-xs text-[#718176]">
+            <div
+              className="mx-auto mt-4 max-w-full rounded-xl border px-4 py-3 text-left sm:max-w-md"
+              style={{
+                borderColor: "var(--app-border, #e2e8f0)",
+                backgroundColor: "var(--app-surface, #ffffff)",
+              }}
+            >
+              <p className="truncate text-sm font-semibold">{file.name}</p>
+              <p className="mt-1 text-xs" style={{ color: "var(--app-muted, #64748b)" }}>
                 {(file.size / 1024).toFixed(1)} KB
               </p>
             </div>
           )}
 
-          <p className="mt-4 text-xs text-[#849287]">
+          <p className="mt-4 text-xs" style={{ color: "var(--app-muted, #64748b)" }}>
             PDF, PNG, JPEG or TXT · Maximum 5 MB
           </p>
         </div>
@@ -207,7 +237,20 @@ export default function UploadForm({
           <button
             type="submit"
             disabled={loading || !file}
-            className="rounded-xl bg-[#477b58] px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#386647] disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-xl px-6 py-3 text-sm font-semibold text-white shadow-sm transition disabled:cursor-not-allowed disabled:opacity-50"
+            style={{
+              backgroundColor: "var(--app-primary, #315c49)",
+            }}
+            onMouseEnter={(event) => {
+              if (!loading && file) {
+                event.currentTarget.style.backgroundColor =
+                  "var(--app-primary-hover, #264a39)";
+              }
+            }}
+            onMouseLeave={(event) => {
+              event.currentTarget.style.backgroundColor =
+                "var(--app-primary, #315c49)";
+            }}
           >
             {loading ? "Uploading..." : "Upload document"}
           </button>
@@ -221,7 +264,11 @@ export default function UploadForm({
                 setSuccess(false);
                 if (inputRef.current) inputRef.current.value = "";
               }}
-              className="rounded-xl border border-[#dce8df] px-4 py-3 text-sm font-medium text-[#526557] transition hover:bg-[#f5f8f5]"
+              className="rounded-xl border px-4 py-3 text-sm font-medium transition"
+              style={{
+                borderColor: "var(--app-border, #e2e8f0)",
+                color: "var(--app-text, #1e293b)",
+              }}
             >
               Remove selected file
             </button>
@@ -233,17 +280,26 @@ export default function UploadForm({
         <p
           role="status"
           aria-live="polite"
-          className={`mt-4 rounded-xl p-3 text-sm ${
+          className="mt-4 rounded-xl border p-3 text-sm"
+          style={
             success
-              ? "border border-emerald-200 bg-emerald-50 text-emerald-800"
-              : "border border-rose-200 bg-rose-50 text-rose-700"
-          }`}
+              ? {
+                  borderColor: "#a7f3d0",
+                  backgroundColor: "#ecfdf5",
+                  color: "#065f46",
+                }
+              : {
+                  borderColor: "#fecdd3",
+                  backgroundColor: "#fff1f2",
+                  color: "#9f1239",
+                }
+          }
         >
           {message}
         </p>
       )}
 
-      <p className="mt-4 text-xs leading-5 text-[#849287]">
+      <p className="mt-4 text-xs leading-5" style={{ color: "var(--app-muted, #64748b)" }}>
         Only upload documents you are authorized to share. File validation
         in the browser is for convenience; the server must validate files
         independently.

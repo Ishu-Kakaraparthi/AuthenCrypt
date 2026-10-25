@@ -66,8 +66,8 @@ const THEME_PRESETS: { name: string; theme: ThemeSettings }[] = [
   { name: "Blue & Mist", theme: { sidebar: "#dce9f5", content: "#f4f7fb", surface: "#ffffff", text: "#1e293b", muted: "#64748b", border: "#dbe4ef", primary: "#285b91", primaryHover: "#1e456f", accent: "#dceafb", input: "#ffffff", hover: "#edf4fc" } },
   { name: "Lavender & Ivory", theme: { sidebar: "#eae2f4", content: "#faf7fc", surface: "#ffffff", text: "#30253d", muted: "#71627f", border: "#e4d9ef", primary: "#6b4790", primaryHover: "#50336d", accent: "#eee5fa", input: "#ffffff", hover: "#f5effb" } },
   { name: "Sand & White", theme: { sidebar: "#eee4d5", content: "#fbfaf7", surface: "#ffffff", text: "#3c3328", muted: "#786d5e", border: "#e7ddcf", primary: "#805b32", primaryHover: "#624324", accent: "#f3e6d2", input: "#ffffff", hover: "#f8f0e5" } },
-  { name: "Dark Graphite", theme: { sidebar: "#151a23", content: "#0d1117", surface: "#1c2430", text: "#f1f5f9", muted: "#aab6c5", border: "#374151", primary: "#78a9ff", primaryHover: "#a2c2ff", accent: "#26364b", input: "#111823", hover: "#293444" } },
-  { name: "Dark Forest", theme: { sidebar: "#10231d", content: "#0b1713", surface: "#152720", text: "#ecfdf5", muted: "#a7c4b6", border: "#304a3d", primary: "#65d6a3", primaryHover: "#91e7bd", accent: "#203d30", input: "#102019", hover: "#254333" } },
+      { name: "Light Mode", theme: { sidebar: "#ffffff", content: "#f5f7fa", surface: "#ffffff", text: "#111827", muted: "#6b7280", border: "#e5e7eb", primary: "#315c49", primaryHover: "#264a39", accent: "#e8f2ec", input: "#ffffff", hover: "#f3f4f6" } },
+  { name: "Dark Mode", theme: { sidebar: "#111827", content: "#0b0f14", surface: "#1f2937", text: "#f9fafb", muted: "#9ca3af", border: "#374151", primary: "#65c995", primaryHover: "#83ddb0", accent: "#263a32", input: "#111827", hover: "#293548" } },
 ];
 
 
