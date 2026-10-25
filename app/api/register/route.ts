@@ -1,7 +1,10 @@
 
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
+import { createHash, randomBytes } from "crypto";
 import prisma from "@/app/lib/prisma";
+
+export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   try {
@@ -37,7 +40,10 @@ export async function POST(request: Request) {
       );
     }
 
-    if (password.length < 12 || Buffer.byteLength(password, "utf8") > 72) {
+    if (
+      password.length < 12 ||
+      Buffer.byteLength(password, "utf8") > 72
+    ) {
       return NextResponse.json(
         {
           error:
@@ -51,36 +57,114 @@ export async function POST(request: Request) {
       where: { email },
     });
 
-    if (existingUser) {
+    if (existingUser?.emailVerified) {
       return NextResponse.json(
         { error: "An account with this email already exists." },
         { status: 409 }
       );
     }
 
+    const token = randomBytes(32).toString("hex");
+    const tokenHash = createHash("sha256")
+      .update(token)
+      .digest("hex");
+
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
     const passwordHash = await bcrypt.hash(password, 12);
 
-   
-    const user = await prisma.user.create({
-      data: {
-        name,
-        email,
-        passwordHash,
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        createdAt: true,
-      },
-    });
+    const user = existingUser
+      ? await prisma.user.update({
+          where: { id: existingUser.id },
+          data: {
+            name,
+            passwordHash,
+            emailVerified: false,
+            verificationTokenHash: tokenHash,
+            verificationTokenExpiresAt: expiresAt,
+          },
+          select: { id: true, email: true },
+        })
+      : await prisma.user.create({
+          data: {
+            name,
+            email,
+            passwordHash,
+            emailVerified: false,
+            verificationTokenHash: tokenHash,
+            verificationTokenExpiresAt: expiresAt,
+          },
+          select: { id: true, email: true },
+        });
 
+    const baseUrl =
+      process.env.APP_URL || new URL(request.url).origin;
+
+    const verificationUrl = new URL(
+      "/api/verify-email",
+      baseUrl
+    );
+    verificationUrl.searchParams.set("token", token);
+
+    const apiKey = process.env.RESEND_API_KEY;
+
+    if (!apiKey) {
+      return NextResponse.json(
+        {
+          error:
+            "Email service is not configured. Please contact the administrator.",
+        },
+        { status: 500 }
+      );
+    }
+
+    const emailResponse = await fetch(
+      "https://api.resend.com/emails",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from: "AuthenCrypt <onboarding@resend.dev>",
+          to: [user.email],
+          subject: "Verify your AuthenCrypt email",
+          html: `
+            <div style="font-family:Arial,sans-serif;line-height:1.6">
+              <h2>Verify your email</h2>
+              <p>Click the button below to verify your AuthenCrypt account.</p>
+              <p>
+                <a href="${verificationUrl.toString()}"
+                   style="display:inline-block;padding:12px 18px;background:#315c49;color:#fff;text-decoration:none;border-radius:6px">
+                  Verify email
+                </a>
+              </p>
+              <p>This link expires in 24 hours.</p>
+              <p>If you did not request this account, you can ignore this email.</p>
+            </div>
+          `,
+        }),
+      }
+    );
+
+    if (!emailResponse.ok) {
+      const details = await emailResponse.text();
+      console.error("Resend email failed:", details);
+
+      return NextResponse.json(
+        {
+          error:
+            "Verification email could not be sent. Check the email service configuration and try again.",
+        },
+        { status: 502 }
+      );
+    }
 
     return NextResponse.json(
       {
-        message: "Registration successful.",
-        user,
+        message:
+          "Registration received. Check your email and click the verification link before logging in.",
       },
       { status: 201 }
     );

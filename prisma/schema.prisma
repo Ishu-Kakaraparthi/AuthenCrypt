@@ -8,18 +8,23 @@ datasource db {
    url      = env("DATABASE_URL")
 }
 
-model User {
-  id           String               @id @default(cuid())
-  name         String
-  email        String               @unique
-  passwordHash String
-  role         String               @default("USER")
-  createdAt    DateTime             @default(now())
 
-  documents    Document[]
-  permissions  DocumentPermission[] @relation("PermissionRecipient")
-  granted      DocumentPermission[] @relation("PermissionGrantedBy")
+model User {
+  id                        String               @id @default(cuid())
+  name                      String
+  email                     String               @unique
+  passwordHash              String
+  role                      String               @default("USER")
+  createdAt                 DateTime             @default(now())
+  emailVerified             Boolean              @default(true)
+  verificationTokenHash     String?              @unique
+  verificationTokenExpiresAt DateTime?
+
+  documents                 Document[]
+  permissions               DocumentPermission[] @relation("PermissionRecipient")
+  granted                   DocumentPermission[] @relation("PermissionGrantedBy")
 }
+
 
 model Document {
   id           String               @id @default(cuid())
