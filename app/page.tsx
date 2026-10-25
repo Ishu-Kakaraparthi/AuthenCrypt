@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import * as XLSX from "xlsx";
 import UploadForm from "./components/UploadForm";
@@ -33,6 +33,15 @@ type UserRecord = {
 type ThemeSettings = {
   sidebar: string;
   content: string;
+  surface: string;
+  text: string;
+  muted: string;
+  border: string;
+  primary: string;
+  primaryHover: string;
+  accent: string;
+  input: string;
+  hover: string;
 };
 
 const NAV_ITEMS = [
@@ -45,16 +54,20 @@ const NAV_ITEMS = [
 
 
 const DEFAULT_THEME: ThemeSettings = {
-  sidebar: "#d9eee7",
-  content: "#f4f8f6",
+  sidebar: "#d9eee7", content: "#f4f8f6", surface: "#ffffff",
+  text: "#1e293b", muted: "#64748b", border: "#e2e8f0",
+  primary: "#315c49", primaryHover: "#264a39", accent: "#e5f0e3",
+  input: "#ffffff", hover: "#f1f5f9",
 };
 
-const THEME_PRESETS = [
-  { name: "Mint & Cloud", sidebar: "#d9eee7", content: "#f4f8f6" },
-  { name: "Sage & Cream", sidebar: "#e4efe3", content: "#f8f6f0" },
-  { name: "Blue & Mist", sidebar: "#dce9f5", content: "#f4f7fb" },
-  { name: "Lavender & Ivory", sidebar: "#eae2f4", content: "#faf7f2" },
-  { name: "Sand & White", sidebar: "#eee4d5", content: "#fbfaf7" },
+const THEME_PRESETS: { name: string; theme: ThemeSettings }[] = [
+  { name: "Mint & Cloud", theme: DEFAULT_THEME },
+  { name: "Sage & Cream", theme: { sidebar: "#e4efe3", content: "#f8f6f0", surface: "#ffffff", text: "#29372d", muted: "#667568", border: "#dce5d9", primary: "#42634a", primaryHover: "#314b38", accent: "#e1eddf", input: "#ffffff", hover: "#edf4ea" } },
+  { name: "Blue & Mist", theme: { sidebar: "#dce9f5", content: "#f4f7fb", surface: "#ffffff", text: "#1e293b", muted: "#64748b", border: "#dbe4ef", primary: "#285b91", primaryHover: "#1e456f", accent: "#dceafb", input: "#ffffff", hover: "#edf4fc" } },
+  { name: "Lavender & Ivory", theme: { sidebar: "#eae2f4", content: "#faf7fc", surface: "#ffffff", text: "#30253d", muted: "#71627f", border: "#e4d9ef", primary: "#6b4790", primaryHover: "#50336d", accent: "#eee5fa", input: "#ffffff", hover: "#f5effb" } },
+  { name: "Sand & White", theme: { sidebar: "#eee4d5", content: "#fbfaf7", surface: "#ffffff", text: "#3c3328", muted: "#786d5e", border: "#e7ddcf", primary: "#805b32", primaryHover: "#624324", accent: "#f3e6d2", input: "#ffffff", hover: "#f8f0e5" } },
+  { name: "Dark Graphite", theme: { sidebar: "#151a23", content: "#0d1117", surface: "#1c2430", text: "#f1f5f9", muted: "#aab6c5", border: "#374151", primary: "#78a9ff", primaryHover: "#a2c2ff", accent: "#26364b", input: "#111823", hover: "#293444" } },
+  { name: "Dark Forest", theme: { sidebar: "#10231d", content: "#0b1713", surface: "#152720", text: "#ecfdf5", muted: "#a7c4b6", border: "#304a3d", primary: "#65d6a3", primaryHover: "#91e7bd", accent: "#203d30", input: "#102019", hover: "#254333" } },
 ];
 
 
@@ -80,6 +93,19 @@ export default function Home() {
 
   const [avatar, setAvatar] = useState("");
   const [theme, setTheme] = useState<ThemeSettings>(DEFAULT_THEME);
+  const themeStyles = {
+    "--app-sidebar": theme.sidebar,
+    "--app-content": theme.content,
+    "--app-surface": theme.surface,
+    "--app-text": theme.text,
+    "--app-muted": theme.muted,
+    "--app-border": theme.border,
+    "--app-primary": theme.primary,
+    "--app-primary-hover": theme.primaryHover,
+    "--app-accent": theme.accent,
+    "--app-input": theme.input,
+    "--app-hover": theme.hover,
+  } as CSSProperties;
   const [sharingDocument, setSharingDocument] =
   useState<DocumentRecord | null>(null);
 
@@ -105,27 +131,20 @@ const [shareMessage, setShareMessage] = useState("");
 
   // Restore saved visual preferences.
   useEffect(() => {
-    const restorePreferences = () => {
-      try {
-        const savedTheme = localStorage.getItem("authencrypt-theme");
-        const savedAvatar = localStorage.getItem("authencrypt-avatar");
+    try {
+      const savedTheme = localStorage.getItem("authencrypt-theme");
+      const savedAvatar = localStorage.getItem("authencrypt-avatar");
 
-        if (savedTheme) {
-          const parsed = JSON.parse(savedTheme) as ThemeSettings;
-          // eslint-disable-next-line react-hooks/set-state-in-effect
-          if (parsed.sidebar && parsed.content) setTheme(parsed);
-        }
-
-        if (savedAvatar) setAvatar(savedAvatar);
-      } catch {
-        // Keep default appearance if saved preferences are invalid.
+      if (savedTheme) {
+        const parsed = JSON.parse(savedTheme) as Partial<ThemeSettings>;
+        if (parsed.sidebar && parsed.content) setTheme({ ...DEFAULT_THEME, ...parsed });
       }
-    };
 
-    window.addEventListener("load", restorePreferences);
-    return () => window.removeEventListener("load", restorePreferences);
+      if (savedAvatar) setAvatar(savedAvatar);
+    } catch {
+      // Keep default appearance if saved preferences are invalid.
+    }
   }, []);
-
 
   // Check the existing login session.
   useEffect(() => {
@@ -233,7 +252,7 @@ const [shareMessage, setShareMessage] = useState("");
 
   useEffect(() => {
     if (!authenticated) return;
-// eslint-disable-next-line react-hooks/set-state-in-effect
+
     void loadDocuments();
     void loadAuditLogs();
   }, [authenticated, loadDocuments, loadAuditLogs]);
@@ -539,8 +558,8 @@ const updatePermission = async (
 
   if (checkingSession || !authenticated) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[#f8f6f0] text-slate-700">
-        <div className="rounded-2xl border border-slate-200 bg-white px-6 py-5 shadow-sm">
+      <main style={themeStyles} className="flex min-h-screen items-center justify-center bg-[var(--app-content)] text-[var(--app-text)]">
+        <div className="rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface)] px-6 py-5 shadow-sm">
           <p className="text-sm font-medium">
             Checking your secure session…
           </p>
@@ -554,38 +573,38 @@ const updatePermission = async (
   const currentUserEmail = user?.email || "Signed-in user";
 
   const cardClass =
-    "rounded-2xl border border-[#e7e5dc] bg-white p-5 shadow-sm transition hover:shadow-md";
+    "rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface)] p-5 text-[var(--app-text)] shadow-sm transition hover:shadow-md";
 
   const buttonClass =
-    "inline-flex items-center justify-center gap-2 rounded-xl border border-[#d8ded5] bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-[#f3f6f0] disabled:cursor-not-allowed disabled:opacity-50";
+    "inline-flex items-center justify-center gap-2 rounded-xl border border-[var(--app-border)] bg-[var(--app-surface)] px-4 py-2.5 text-sm font-semibold text-[var(--app-text)] transition hover:bg-[var(--app-hover)] disabled:cursor-not-allowed disabled:opacity-50";
 
   const primaryButtonClass =
-    "inline-flex items-center justify-center gap-2 rounded-xl bg-[#315c49] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#264a39] disabled:cursor-not-allowed disabled:opacity-50";
+    "inline-flex items-center justify-center gap-2 rounded-xl bg-[var(--app-primary)] px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50";
 
   return (
-    <main className="flex h-screen overflow-hidden text-slate-800">
+    <main style={themeStyles} className="flex h-screen overflow-hidden bg-[var(--app-content)] text-[var(--app-text)]">
       {/* Sidebar */}
       <aside
         className="flex h-screen w-[250px] shrink-0 flex-col border-r border-black/5"
-        style={{ backgroundColor: theme.sidebar }}
+        style={{ backgroundColor: "var(--app-sidebar)", color: "var(--app-text)" }}
       >
         <div className="border-b border-black/5 px-5 py-6">
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#315c49] text-xl font-bold text-white shadow-sm">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--app-primary)] text-xl font-bold text-white shadow-sm">
               A
             </div>
 
             <div>
-              <h1 className="text-lg font-bold tracking-tight text-[#254735]">
+              <h1 className="text-lg font-bold tracking-tight text-[var(--app-primary)]">
                 AuthenCrypt
               </h1>
-              <p className="text-xs text-slate-600">Secure workspace</p>
+              <p className="text-xs text-[var(--app-muted)]">Secure workspace</p>
             </div>
           </div>
         </div>
 
         <div className="px-4 pt-6">
-          <p className="px-3 pb-3 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">
+          <p className="px-3 pb-3 text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--app-muted)]">
             Workspace
           </p>
         </div>
@@ -601,8 +620,8 @@ const updatePermission = async (
                 onClick={() => navigate(item.label)}
                 className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold transition ${
                   selected
-                    ? "bg-[#315c49] text-white shadow-sm"
-                    : "text-slate-700 hover:bg-white/70"
+                    ? "bg-[var(--app-primary)] text-white shadow-sm"
+                    : "text-[var(--app-text)] hover:bg-[var(--app-surface)]/70"
                 }`}
               >
                 <span className="flex h-7 w-7 items-center justify-center text-lg">
@@ -615,8 +634,8 @@ const updatePermission = async (
                   <span
                     className={`ml-auto rounded-full px-2 py-0.5 text-xs ${
                       selected
-                        ? "bg-white/20 text-white"
-                        : "bg-white text-slate-600"
+                        ? "bg-[var(--app-surface)]/20 text-white"
+                        : "bg-[var(--app-surface)] text-[var(--app-muted)]"
                     }`}
                   >
                     {documents.length}
@@ -633,9 +652,9 @@ const updatePermission = async (
             type="button"
             onClick={() => navigate("Settings")}
             aria-label="Open profile settings"
-            className="flex w-full items-center gap-3 rounded-2xl border border-black/5 bg-white/70 p-3 text-left transition hover:bg-white"
+            className="flex w-full items-center gap-3 rounded-2xl border border-black/5 bg-[var(--app-surface)]/70 p-3 text-left transition hover:bg-[var(--app-surface)]"
           >
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-[#d5e5d5] text-xl shadow-sm">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-[var(--app-accent)] text-xl shadow-sm">
               {avatar ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
@@ -649,10 +668,10 @@ const updatePermission = async (
             </span>
 
             <span className="min-w-0 flex-1">
-              <span className="block truncate text-sm font-bold text-slate-800">
+              <span className="block truncate text-sm font-bold text-[var(--app-text)]">
                 {currentUserName}
               </span>
-              <span className="block truncate text-xs text-slate-500">
+              <span className="block truncate text-xs text-[var(--app-muted)]">
                 {currentUserEmail}
               </span>
             </span>
@@ -670,7 +689,7 @@ const updatePermission = async (
             }}
           />
 
-          <p className="mt-3 text-center text-[10px] text-slate-500">
+          <p className="mt-3 text-center text-[10px] text-[var(--app-muted)]">
             Session-protected workspace · AuthenCrypt
           </p>
         </div>
@@ -679,20 +698,20 @@ const updatePermission = async (
       {/* Main content */}
       <section
         className="h-screen min-w-0 flex-1 overflow-y-auto"
-        style={{ backgroundColor: theme.content }}
+        style={{ backgroundColor: "var(--app-content)", color: "var(--app-text)" }}
       >
         <div className="mx-auto w-full max-w-[1500px] p-5 md:p-8 xl:p-10">
           <header className="mb-8 flex flex-wrap items-center justify-between gap-4">
             <div>
-              <p className="mb-2 text-xs font-medium text-slate-500">
+              <p className="mb-2 text-xs font-medium text-[var(--app-muted)]">
                 Workspace <span className="mx-1">/</span> {active}
               </p>
 
-              <h2 className="text-3xl font-bold tracking-tight text-[#254735]">
+              <h2 className="text-3xl font-bold tracking-tight text-[var(--app-primary)]">
                 {active}
               </h2>
 
-              <p className="mt-2 text-sm text-slate-600">
+              <p className="mt-2 text-sm text-[var(--app-muted)]">
                 {active === "Dashboard" &&
                   "Your secure documents and workspace activity at a glance."}
                 {active === "Documents" &&
@@ -743,18 +762,18 @@ const updatePermission = async (
                 >
                   <div className="flex items-start justify-between">
                     <div>
-                      <p className="text-sm font-medium text-slate-500">
+                      <p className="text-sm font-medium text-[var(--app-muted)]">
                         Total documents
                       </p>
-                      <p className="mt-3 text-3xl font-bold text-[#254735]">
+                      <p className="mt-3 text-3xl font-bold text-[var(--app-primary)]">
                         {documents.length}
                       </p>
                     </div>
-                    <span className="rounded-xl bg-[#e5f0e3] p-3 text-xl">
+                    <span className="rounded-xl bg-[var(--app-accent)] p-3 text-xl">
                       ▤
                     </span>
                   </div>
-                  <p className="mt-4 text-xs font-semibold text-[#315c49]">
+                  <p className="mt-4 text-xs font-semibold text-[var(--app-primary)]">
                     View document library →
                   </p>
                 </button>
@@ -762,18 +781,18 @@ const updatePermission = async (
                 <div className={cardClass}>
                   <div className="flex items-start justify-between">
                     <div>
-                      <p className="text-sm font-medium text-slate-500">
+                      <p className="text-sm font-medium text-[var(--app-muted)]">
                         Stored file size
                       </p>
-                      <p className="mt-3 text-3xl font-bold text-[#254735]">
+                      <p className="mt-3 text-3xl font-bold text-[var(--app-primary)]">
                         {formatSize(totalSize)}
                       </p>
                     </div>
-                    <span className="rounded-xl bg-[#f4ead8] p-3 text-xl">
+                    <span className="rounded-xl bg-[var(--app-accent)] p-3 text-xl">
                       ▧
                     </span>
                   </div>
-                  <p className="mt-4 text-xs text-slate-500">
+                  <p className="mt-4 text-xs text-[var(--app-muted)]">
                     Combined size of listed documents
                   </p>
                 </div>
@@ -785,18 +804,18 @@ const updatePermission = async (
                 >
                   <div className="flex items-start justify-between">
                     <div>
-                      <p className="text-sm font-medium text-slate-500">
+                      <p className="text-sm font-medium text-[var(--app-muted)]">
                         Access control
                       </p>
-                      <p className="mt-3 text-2xl font-bold text-[#254735]">
+                      <p className="mt-3 text-2xl font-bold text-[var(--app-primary)]">
                         Session & permissions
                       </p>
                     </div>
-                    <span className="rounded-xl bg-[#e5f0e3] p-3 text-xl">
+                    <span className="rounded-xl bg-[var(--app-accent)] p-3 text-xl">
                       ♙
                     </span>
                   </div>
-                  <p className="mt-4 text-xs font-semibold text-[#315c49]">
+                  <p className="mt-4 text-xs font-semibold text-[var(--app-primary)]">
                     Review protection details →
                   </p>
                 </button>
@@ -808,18 +827,18 @@ const updatePermission = async (
                 >
                   <div className="flex items-start justify-between">
                     <div>
-                      <p className="text-sm font-medium text-slate-500">
+                      <p className="text-sm font-medium text-[var(--app-muted)]">
                         Audit events
                       </p>
-                      <p className="mt-3 text-3xl font-bold text-[#254735]">
+                      <p className="mt-3 text-3xl font-bold text-[var(--app-primary)]">
                         {auditLogs.length}
                       </p>
                     </div>
-                    <span className="rounded-xl bg-[#e9e5f5] p-3 text-xl">
+                    <span className="rounded-xl bg-[var(--app-accent)] p-3 text-xl">
                       ◷
                     </span>
                   </div>
-                  <p className="mt-4 text-xs font-semibold text-[#315c49]">
+                  <p className="mt-4 text-xs font-semibold text-[var(--app-primary)]">
                     Inspect recorded events →
                   </p>
                 </button>
@@ -829,10 +848,10 @@ const updatePermission = async (
                 <div className={`${cardClass} xl:col-span-2`}>
                   <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
                     <div>
-                      <h3 className="text-lg font-bold text-[#254735]">
+                      <h3 className="text-lg font-bold text-[var(--app-primary)]">
                         Recent documents
                       </h3>
-                      <p className="mt-1 text-sm text-slate-500">
+                      <p className="mt-1 text-sm text-[var(--app-muted)]">
                         The latest document records available to your account.
                       </p>
                     </div>
@@ -846,11 +865,11 @@ const updatePermission = async (
                   </div>
 
                   {documents.length === 0 ? (
-                    <div className="rounded-xl border border-dashed border-slate-200 px-4 py-10 text-center">
-                      <p className="font-semibold text-slate-700">
+                    <div className="rounded-xl border border-dashed border-[var(--app-border)] px-4 py-10 text-center">
+                      <p className="font-semibold text-[var(--app-text)]">
                         No documents to display
                       </p>
-                      <p className="mt-1 text-sm text-slate-500">
+                      <p className="mt-1 text-sm text-[var(--app-muted)]">
                         Open Documents to upload your first file.
                       </p>
                     </div>
@@ -858,7 +877,7 @@ const updatePermission = async (
                     <div className="overflow-x-auto">
                       <table className="w-full min-w-[520px] text-left text-sm">
                         <thead>
-                          <tr className="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-500">
+                          <tr className="border-b border-[var(--app-border)] text-xs uppercase tracking-wide text-[var(--app-muted)]">
                             <th className="pb-3 pr-4 font-semibold">
                               Document
                             </th>
@@ -877,22 +896,22 @@ const updatePermission = async (
                             .map((doc) => (
                               <tr
                                 key={doc.id}
-                                className="border-b border-slate-50 last:border-0"
+                                className="border-b border-[var(--app-border)] last:border-0"
                               >
                                 <td className="max-w-[230px] py-4 pr-4">
-                                  <p className="truncate font-semibold text-slate-800">
+                                  <p className="truncate font-semibold text-[var(--app-text)]">
                                     {doc.originalName}
                                   </p>
-                                  <p className="mt-1 text-xs text-slate-500">
+                                  <p className="mt-1 text-xs text-[var(--app-muted)]">
                                     {formatSize(doc.size)}
                                   </p>
                                 </td>
                                 <td className="py-4 pr-4">
-                                  <span className="rounded-lg bg-[#eef3ec] px-2 py-1 text-xs font-semibold text-[#315c49]">
+                                  <span className="rounded-lg bg-[var(--app-accent)] px-2 py-1 text-xs font-semibold text-[var(--app-primary)]">
                                     {getFileKind(doc)}
                                   </span>
                                 </td>
-                                <td className="py-4 text-xs text-slate-500">
+                                <td className="py-4 text-xs text-[var(--app-muted)]">
                                   {formatDate(doc.uploadedAt)}
                                 </td>
                               </tr>
@@ -904,10 +923,10 @@ const updatePermission = async (
                 </div>
 
                 <div className={cardClass}>
-                  <h3 className="text-lg font-bold text-[#254735]">
+                  <h3 className="text-lg font-bold text-[var(--app-primary)]">
                     Security overview
                   </h3>
-                  <p className="mt-1 text-sm text-slate-500">
+                  <p className="mt-1 text-sm text-[var(--app-muted)]">
                     Current workspace checks
                   </p>
 
@@ -918,14 +937,14 @@ const updatePermission = async (
                       ["Activity history", "Recorded events returned by the audit API"],
                     ].map(([title, description]) => (
                       <div key={title} className="flex gap-3">
-                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#e5f0e3] text-sm text-[#315c49]">
+                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--app-accent)] text-sm text-[var(--app-primary)]">
                           ✓
                         </span>
                         <div>
-                          <p className="text-sm font-semibold text-slate-800">
+                          <p className="text-sm font-semibold text-[var(--app-text)]">
                             {title}
                           </p>
-                          <p className="mt-1 text-xs leading-5 text-slate-500">
+                          <p className="mt-1 text-xs leading-5 text-[var(--app-muted)]">
                             {description}
                           </p>
                         </div>
@@ -946,10 +965,10 @@ const updatePermission = async (
               <div className={cardClass}>
                 <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <h3 className="text-lg font-bold text-[#254735]">
+                    <h3 className="text-lg font-bold text-[var(--app-primary)]">
                       Recent audit activity
                     </h3>
-                    <p className="mt-1 text-sm text-slate-500">
+                    <p className="mt-1 text-sm text-[var(--app-muted)]">
                       Activity recorded by the server and returned by the audit API.
                     </p>
                   </div>
@@ -963,7 +982,7 @@ const updatePermission = async (
                 </div>
 
                 {auditLogs.length === 0 ? (
-                  <p className="rounded-xl bg-slate-50 p-4 text-sm text-slate-500">
+                  <p className="rounded-xl bg-[var(--app-hover)] p-4 text-sm text-[var(--app-muted)]">
                     {loadingAudit
                       ? "Loading activity…"
                       : "No audit events are available to display."}
@@ -980,17 +999,17 @@ const updatePermission = async (
                       .map((log) => (
                         <div
                           key={log.id}
-                          className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-[#f8f8f4] px-4 py-3"
+                          className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-[var(--app-hover)] px-4 py-3"
                         >
                           <div>
-                            <p className="text-sm font-semibold text-slate-800">
+                            <p className="text-sm font-semibold text-[var(--app-text)]">
                               {log.action}
                             </p>
-                            <p className="mt-1 text-xs text-slate-500">
+                            <p className="mt-1 text-xs text-[var(--app-muted)]">
                               {log.fileName || "Workspace event"} · {log.actor}
                             </p>
                           </div>
-                          <p className="text-xs text-slate-500">
+                          <p className="text-xs text-[var(--app-muted)]">
                             {formatDate(log.createdAt)}
                           </p>
                         </div>
@@ -1006,24 +1025,24 @@ const updatePermission = async (
             <>
               <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
                 <div className={cardClass}>
-                  <p className="text-sm text-slate-500">Documents listed</p>
-                  <p className="mt-2 text-2xl font-bold text-[#254735]">
+                  <p className="text-sm text-[var(--app-muted)]">Documents listed</p>
+                  <p className="mt-2 text-2xl font-bold text-[var(--app-primary)]">
                     {documents.length}
                   </p>
                 </div>
                 <div className={cardClass}>
-                  <p className="text-sm text-slate-500">
+                  <p className="text-sm text-[var(--app-muted)]">
                     Matching current filter
                   </p>
-                  <p className="mt-2 text-2xl font-bold text-[#254735]">
+                  <p className="mt-2 text-2xl font-bold text-[var(--app-primary)]">
                     {filteredDocuments.length}
                   </p>
                 </div>
                 <div className={cardClass}>
-                  <p className="text-sm text-slate-500">
+                  <p className="text-sm text-[var(--app-muted)]">
                     Total listed file size
                   </p>
-                  <p className="mt-2 text-2xl font-bold text-[#254735]">
+                  <p className="mt-2 text-2xl font-bold text-[var(--app-primary)]">
                     {formatSize(totalSize)}
                   </p>
                 </div>
@@ -1031,10 +1050,10 @@ const updatePermission = async (
 
               <div className={`${cardClass} mb-6`}>
                 <div className="mb-4">
-                  <h3 className="text-lg font-bold text-[#254735]">
+                  <h3 className="text-lg font-bold text-[var(--app-primary)]">
                     Upload a document
                   </h3>
-                  <p className="mt-1 text-sm text-slate-500">
+                  <p className="mt-1 text-sm text-[var(--app-muted)]">
                     Upload PDF, PNG, JPEG, or text files up to 5 MB. The server must validate each upload.
                   </p>
                 </div>
@@ -1050,10 +1069,10 @@ const updatePermission = async (
               <div className={cardClass}>
                 <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <h3 className="text-lg font-bold text-[#254735]">
+                    <h3 className="text-lg font-bold text-[var(--app-primary)]">
                       Document library
                     </h3>
-                    <p className="mt-1 text-sm text-slate-500">
+                    <p className="mt-1 text-sm text-[var(--app-muted)]">
                       Search and filter the document records available to your account.
                     </p>
                   </div>
@@ -1083,7 +1102,7 @@ const updatePermission = async (
 
                 <div className="mb-5 grid grid-cols-1 gap-3 md:grid-cols-[1fr_180px]">
                   <label className="block">
-                    <span className="mb-2 block text-xs font-semibold text-slate-600">
+                    <span className="mb-2 block text-xs font-semibold text-[var(--app-muted)]">
                       Search documents
                     </span>
                     <input
@@ -1091,18 +1110,18 @@ const updatePermission = async (
                       value={search}
                       onChange={(event) => setSearch(event.target.value)}
                       placeholder="Search by file name…"
-                      className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#71977e] focus:ring-2 focus:ring-[#71977e]/20"
+                      className="w-full rounded-xl border border-[var(--app-border)] bg-[var(--app-surface)] px-4 py-3 text-sm outline-none transition focus:border-[var(--app-primary)] focus:ring-2 focus:ring-[var(--app-primary)]/20"
                     />
                   </label>
 
                   <label className="block">
-                    <span className="mb-2 block text-xs font-semibold text-slate-600">
+                    <span className="mb-2 block text-xs font-semibold text-[var(--app-muted)]">
                       File type
                     </span>
                     <select
                       value={fileType}
                       onChange={(event) => setFileType(event.target.value)}
-                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none focus:border-[#71977e]"
+                      className="w-full rounded-xl border border-[var(--app-border)] bg-[var(--app-surface)] px-3 py-3 text-sm outline-none focus:border-[var(--app-primary)]"
                     >
                       <option>All</option>
                       <option>PDF</option>
@@ -1113,11 +1132,11 @@ const updatePermission = async (
                 </div>
 
                 {filteredDocuments.length === 0 ? (
-                  <div className="rounded-xl border border-dashed border-slate-200 px-4 py-12 text-center">
-                    <p className="font-semibold text-slate-700">
+                  <div className="rounded-xl border border-dashed border-[var(--app-border)] px-4 py-12 text-center">
+                    <p className="font-semibold text-[var(--app-text)]">
                       No matching documents
                     </p>
-                    <p className="mt-1 text-sm text-slate-500">
+                    <p className="mt-1 text-sm text-[var(--app-muted)]">
                       Try a different search or file-type filter.
                     </p>
                   </div>
@@ -1125,7 +1144,7 @@ const updatePermission = async (
                   <div className="overflow-x-auto">
                     <table className="w-full min-w-[720px] text-left text-sm">
                       <thead>
-                        <tr className="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-500">
+                        <tr className="border-b border-[var(--app-border)] text-xs uppercase tracking-wide text-[var(--app-muted)]">
                           <th className="pb-3 pr-4 font-semibold">Document</th>
                           <th className="pb-3 pr-4 font-semibold">Type</th>
                           <th className="pb-3 pr-4 font-semibold">Size</th>
@@ -1140,28 +1159,28 @@ const updatePermission = async (
                           return (
                             <tr
                               key={doc.id}
-                              className="border-b border-slate-50 last:border-0 hover:bg-[#fbfcf9]"
+                              className="border-b border-[var(--app-border)] last:border-0 hover:bg-[var(--app-hover)]"
                             >
                               <td className="max-w-[260px] py-4 pr-4">
-                                <p className="truncate font-semibold text-slate-800">
+                                <p className="truncate font-semibold text-[var(--app-text)]">
                                   {doc.originalName}
                                 </p>
-                                <p className="mt-1 truncate text-xs text-slate-500">
+                                <p className="mt-1 truncate text-xs text-[var(--app-muted)]">
                                   {doc.id}
                                 </p>
                               </td>
 
                               <td className="py-4 pr-4">
-                                <span className="rounded-lg bg-[#eef3ec] px-2 py-1 text-xs font-semibold text-[#315c49]">
+                                <span className="rounded-lg bg-[var(--app-accent)] px-2 py-1 text-xs font-semibold text-[var(--app-primary)]">
                                   {getFileKind(doc)}
                                 </span>
                               </td>
 
-                              <td className="py-4 pr-4 text-slate-600">
+                              <td className="py-4 pr-4 text-[var(--app-muted)]">
                                 {formatSize(doc.size)}
                               </td>
 
-                              <td className="py-4 pr-4 text-xs text-slate-500">
+                              <td className="py-4 pr-4 text-xs text-[var(--app-muted)]">
                                 {formatDate(doc.uploadedAt)}
                               </td>
 
@@ -1169,7 +1188,7 @@ const updatePermission = async (
                                 <div className="flex items-center gap-2">
                                   <a
                                     href={fileUrl}
-                                    className="rounded-lg bg-[#315c49] px-3 py-2 text-xs font-semibold text-white hover:bg-[#264a39]"
+                                    className="rounded-lg bg-[var(--app-primary)] px-3 py-2 text-xs font-semibold text-white hover:opacity-90"
                                   >
                                     Download
                                   </a>
@@ -1211,44 +1230,44 @@ const updatePermission = async (
             <>
               <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className={cardClass}>
-                  <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#e5f0e3] text-2xl text-[#315c49]">
+                  <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--app-accent)] text-2xl text-[var(--app-primary)]">
                     ♙
                   </div>
-                  <h3 className="text-lg font-bold text-[#254735]">
+                  <h3 className="text-lg font-bold text-[var(--app-primary)]">
                     Authenticated access
                   </h3>
-                  <p className="mt-2 text-sm leading-6 text-slate-600">
+                  <p className="mt-2 text-sm leading-6 text-[var(--app-muted)]">
                     The dashboard checks the existing session endpoint. Protected
                     document operations must also validate the session on the server.
                   </p>
-                  <span className="mt-4 inline-flex rounded-full bg-[#e5f0e3] px-3 py-1 text-xs font-semibold text-[#315c49]">
+                  <span className="mt-4 inline-flex rounded-full bg-[var(--app-accent)] px-3 py-1 text-xs font-semibold text-[var(--app-primary)]">
                     Dashboard session check
                   </span>
                 </div>
 
                 <div className={cardClass}>
-                  <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#f4ead8] text-2xl text-[#856338]">
+                  <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--app-accent)] text-2xl text-[var(--app-primary)]">
                     ▣
                   </div>
-                  <h3 className="text-lg font-bold text-[#254735]">
+                  <h3 className="text-lg font-bold text-[var(--app-primary)]">
                     Document ownership
                   </h3>
-                  <p className="mt-2 text-sm leading-6 text-slate-600">
+                  <p className="mt-2 text-sm leading-6 text-[var(--app-muted)]">
                     Each document request should verify that the signed-in user is
                     authorized to access that specific document. Hiding a button in
                     the interface is not an access-control check.
                   </p>
-                  <span className="mt-4 inline-flex rounded-full bg-[#f4ead8] px-3 py-1 text-xs font-semibold text-[#856338]">
+                  <span className="mt-4 inline-flex rounded-full bg-[var(--app-accent)] px-3 py-1 text-xs font-semibold text-[var(--app-primary)]">
                     Server-side verification required
                   </span>
                 </div>
               </div>
 
               <div className={`${cardClass} mb-6`}>
-                <h3 className="text-lg font-bold text-[#254735]">
+                <h3 className="text-lg font-bold text-[var(--app-primary)]">
                   Access-control verification checklist
                 </h3>
-                <p className="mt-1 text-sm text-slate-500">
+                <p className="mt-1 text-sm text-[var(--app-muted)]">
                   Test each item against the server-side API before marking it as verified.
                 </p>
 
@@ -1273,14 +1292,14 @@ const updatePermission = async (
                   ].map(([title, description]) => (
                     <div
                       key={title}
-                      className="flex items-start gap-3 rounded-xl border border-slate-100 p-4"
+                      className="flex items-start gap-3 rounded-xl border border-[var(--app-border)] p-4"
                     >
-                      <span className="mt-0.5 text-lg text-[#315c49]">✓</span>
+                      <span className="mt-0.5 text-lg text-[var(--app-primary)]">✓</span>
                       <div>
-                        <p className="text-sm font-semibold text-slate-800">
+                        <p className="text-sm font-semibold text-[var(--app-text)]">
                           {title}
                         </p>
-                        <p className="mt-1 text-sm leading-6 text-slate-500">
+                        <p className="mt-1 text-sm leading-6 text-[var(--app-muted)]">
                           {description}
                         </p>
                       </div>
@@ -1296,10 +1315,10 @@ const updatePermission = async (
               </div>
 
               <div className={cardClass}>
-                <h3 className="text-lg font-bold text-[#254735]">
+                <h3 className="text-lg font-bold text-[var(--app-primary)]">
                   Your workspace
                 </h3>
-                <p className="mt-2 text-sm text-slate-600">
+                <p className="mt-2 text-sm text-[var(--app-muted)]">
                   Signed in as <strong>{currentUserEmail}</strong>. Review the activity records available to your account; the backend may not record every action.
                 </p>
                 <button
@@ -1318,26 +1337,26 @@ const updatePermission = async (
             <>
               <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
                 <div className={cardClass}>
-                  <p className="text-sm text-slate-500">Events returned</p>
-                  <p className="mt-2 text-2xl font-bold text-[#254735]">
+                  <p className="text-sm text-[var(--app-muted)]">Events returned</p>
+                  <p className="mt-2 text-2xl font-bold text-[var(--app-primary)]">
                     {auditLogs.length}
                   </p>
                 </div>
 
                 <div className={cardClass}>
-                  <p className="text-sm text-slate-500">
+                  <p className="text-sm text-[var(--app-muted)]">
                     Document-related events
                   </p>
-                  <p className="mt-2 text-2xl font-bold text-[#254735]">
+                  <p className="mt-2 text-2xl font-bold text-[var(--app-primary)]">
                     {auditLogs.filter((log) => log.documentId).length}
                   </p>
                 </div>
 
                 <div className={cardClass}>
-                  <p className="text-sm text-slate-500">
+                  <p className="text-sm text-[var(--app-muted)]">
                     Distinct event actions
                   </p>
-                  <p className="mt-2 text-2xl font-bold text-[#254735]">
+                  <p className="mt-2 text-2xl font-bold text-[var(--app-primary)]">
                     {new Set(auditLogs.map((log) => log.action)).size}
                   </p>
                 </div>
@@ -1346,10 +1365,10 @@ const updatePermission = async (
               <div className={cardClass}>
                 <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <h3 className="text-lg font-bold text-[#254735]">
+                    <h3 className="text-lg font-bold text-[var(--app-primary)]">
                       Audit event history
                     </h3>
-                    <p className="mt-1 text-sm text-slate-500">
+                    <p className="mt-1 text-sm text-[var(--app-muted)]">
                       Records returned by the existing audit endpoint.
                     </p>
                   </div>
@@ -1365,13 +1384,13 @@ const updatePermission = async (
                 </div>
 
                 <label className="mb-5 block max-w-xs">
-                  <span className="mb-2 block text-xs font-semibold text-slate-600">
+                  <span className="mb-2 block text-xs font-semibold text-[var(--app-muted)]">
                     Filter by action
                   </span>
                   <select
                     value={auditFilter}
                     onChange={(event) => setAuditFilter(event.target.value)}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none focus:border-[#71977e]"
+                    className="w-full rounded-xl border border-[var(--app-border)] bg-[var(--app-surface)] px-3 py-3 text-sm outline-none focus:border-[var(--app-primary)]"
                   >
                     <option value="All">All actions</option>
                     {[...new Set(auditLogs.map((log) => log.action))]
@@ -1385,20 +1404,19 @@ const updatePermission = async (
                 </label>
 
                 {filteredAuditLogs.length === 0 ? (
-                  <div className="rounded-xl border border-dashed border-slate-200 px-4 py-12 text-center">
-                    <p className="font-semibold text-slate-700">
+                  <div className="rounded-xl border border-dashed border-[var(--app-border)] px-4 py-12 text-center">
+                    <p className="font-semibold text-[var(--app-text)]">
                       No audit events found
                     </p>
-                    <p className="mt-1 text-sm text-slate-500">
-
-Audit records are accessible to administrators only. You do not have permission to view audit events. Please contact your administrator if you need an access review.
+                    <p className="mt-1 text-sm text-[var(--app-muted)]">
+                      Events will appear here when returned by the audit API.
                     </p>
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full min-w-[680px] text-left text-sm">
                       <thead>
-                        <tr className="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-500">
+                        <tr className="border-b border-[var(--app-border)] text-xs uppercase tracking-wide text-[var(--app-muted)]">
                           <th className="pb-3 pr-4 font-semibold">Action</th>
                           <th className="pb-3 pr-4 font-semibold">Document</th>
                           <th className="pb-3 pr-4 font-semibold">Actor</th>
@@ -1415,20 +1433,20 @@ Audit records are accessible to administrators only. You do not have permission 
                           .map((log) => (
                             <tr
                               key={log.id}
-                              className="border-b border-slate-50 last:border-0"
+                              className="border-b border-[var(--app-border)] last:border-0"
                             >
                               <td className="py-4 pr-4">
-                                <span className="inline-flex rounded-lg bg-[#eef3ec] px-2.5 py-1.5 text-xs font-semibold text-[#315c49]">
+                                <span className="inline-flex rounded-lg bg-[var(--app-accent)] px-2.5 py-1.5 text-xs font-semibold text-[var(--app-primary)]">
                                   {log.action}
                                 </span>
                               </td>
-                              <td className="max-w-[220px] truncate py-4 pr-4 text-slate-700">
+                              <td className="max-w-[220px] truncate py-4 pr-4 text-[var(--app-text)]">
                                 {log.fileName || log.documentId || "—"}
                               </td>
-                              <td className="py-4 pr-4 text-slate-600">
+                              <td className="py-4 pr-4 text-[var(--app-muted)]">
                                 {log.actor || "—"}
                               </td>
-                              <td className="py-4 text-xs text-slate-500">
+                              <td className="py-4 text-xs text-[var(--app-muted)]">
                                 {formatDate(log.createdAt)}
                               </td>
                             </tr>
@@ -1439,7 +1457,7 @@ Audit records are accessible to administrators only. You do not have permission 
                 )}
               </div>
 
-              <p className="mt-4 text-xs leading-5 text-slate-500">
+              <p className="mt-4 text-xs leading-5 text-[var(--app-muted)]">
                 An audit trail is only as complete as the events recorded by the
                 backend. Confirm that file previews, downloads, denied requests,
                 and other required security events are logged by the server.
@@ -1456,7 +1474,7 @@ Audit records are accessible to administrators only. You do not have permission 
                     type="button"
                     title="Change profile photo"
                     onClick={() => avatarInput.current?.click()}
-                    className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border-4 border-[#e4efe3] bg-[#d5e5d5] text-3xl"
+                    className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border-4 border-[var(--app-border)] bg-[var(--app-accent)] text-3xl"
                   >
                     {avatar ? (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -1471,17 +1489,17 @@ Audit records are accessible to administrators only. You do not have permission 
                   </button>
 
                   <div>
-                    <h3 className="text-xl font-bold text-[#254735]">
+                    <h3 className="text-xl font-bold text-[var(--app-primary)]">
                       {currentUserName}
                     </h3>
-                    <p className="mt-1 text-sm text-slate-500">
+                    <p className="mt-1 text-sm text-[var(--app-muted)]">
                       {currentUserEmail}
                     </p>
 
                     <button
                       type="button"
                       onClick={() => avatarInput.current?.click()}
-                      className="mt-3 text-sm font-semibold text-[#315c49] underline"
+                      className="mt-3 text-sm font-semibold text-[var(--app-primary)] underline"
                     >
                       Update profile photo
                     </button>
@@ -1498,39 +1516,39 @@ Audit records are accessible to administrators only. You do not have permission 
                   </div>
                 </div>
 
-                <div className="mt-6 grid grid-cols-1 gap-4 border-t border-slate-100 pt-5 md:grid-cols-2">
+                <div className="mt-6 grid grid-cols-1 gap-4 border-t border-[var(--app-border)] pt-5 md:grid-cols-2">
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-[var(--app-muted)]">
                       Full name
                     </p>
-                    <p className="mt-2 font-medium text-slate-800">
+                    <p className="mt-2 font-medium text-[var(--app-text)]">
                       {user?.name || "Not provided"}
                     </p>
                   </div>
 
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-[var(--app-muted)]">
                       Email address
                     </p>
-                    <p className="mt-2 break-all font-medium text-slate-800">
+                    <p className="mt-2 break-all font-medium text-[var(--app-text)]">
                       {user?.email || "Not provided"}
                     </p>
                   </div>
 
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-[var(--app-muted)]">
                       Account created
                     </p>
-                    <p className="mt-2 font-medium text-slate-800">
+                    <p className="mt-2 font-medium text-[var(--app-text)]">
                       {formatDate(user?.createdAt)}
                     </p>
                   </div>
 
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-[var(--app-muted)]">
                       Session
                     </p>
-                    <p className="mt-2 font-medium text-slate-800">
+                    <p className="mt-2 font-medium text-[var(--app-text)]">
                       Signed in
                     </p>
                   </div>
@@ -1538,51 +1556,48 @@ Audit records are accessible to administrators only. You do not have permission 
               </div>
 
               <div className={`${cardClass} mb-6`}>
-                <h3 className="text-lg font-bold text-[#254735]">
+                <h3 className="text-lg font-bold text-[var(--app-primary)]">
                   Workspace appearance
                 </h3>
-                <p className="mt-1 text-sm text-slate-500">
-                  Select a coordinated palette or set your own sidebar and content
-                  colors. Theme and profile-photo preferences are saved in this browser and may not appear on other devices.
+                <p className="mt-1 text-sm text-[var(--app-muted)]">
+                  Choose a coordinated palette. The sidebar, page, cards, text, borders, buttons, and form controls update together. Theme and profile-photo preferences are saved in this browser and may not appear on other devices.
                 </p>
 
                 <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                   {THEME_PRESETS.map((preset) => {
                     const selected =
-                      theme.sidebar === preset.sidebar &&
-                      theme.content === preset.content;
+                      theme.sidebar === preset.theme.sidebar &&
+                      theme.content === preset.theme.content &&
+                      theme.primary === preset.theme.primary;
 
                     return (
                       <button
                         key={preset.name}
                         type="button"
                         onClick={() =>
-                          saveTheme({
-                            sidebar: preset.sidebar,
-                            content: preset.content,
-                          })
+                          saveTheme(preset.theme)
                         }
                         className={`rounded-xl border p-3 text-left transition ${
                           selected
-                            ? "border-[#315c49] ring-2 ring-[#315c49]/15"
-                            : "border-slate-200 hover:border-slate-400"
+                            ? "border-[var(--app-primary)] ring-2 ring-[var(--app-primary)]/20"
+                            : "border-[var(--app-border)] hover:border-[var(--app-primary)]"
                         }`}
                       >
                         <div className="mb-3 flex h-12 overflow-hidden rounded-lg border border-black/5">
                           <div
                             className="w-1/3"
-                            style={{ backgroundColor: preset.sidebar }}
+                            style={{ backgroundColor: preset.theme.sidebar }}
                           />
                           <div
                             className="flex-1"
-                            style={{ backgroundColor: preset.content }}
+                            style={{ backgroundColor: preset.theme.content }}
                           />
                         </div>
 
-                        <p className="text-sm font-semibold text-slate-800">
+                        <p className="text-sm font-semibold text-[var(--app-text)]">
                           {preset.name}
                         </p>
-                        <p className="mt-1 text-xs text-slate-500">
+                        <p className="mt-1 text-xs text-[var(--app-muted)]">
                           {selected ? "Selected" : "Choose palette"}
                         </p>
                       </button>
@@ -1590,13 +1605,13 @@ Audit records are accessible to administrators only. You do not have permission 
                   })}
                 </div>
 
-                <div className="mt-6 grid grid-cols-1 gap-5 border-t border-slate-100 pt-5 md:grid-cols-2">
+                <div className="mt-6 grid grid-cols-1 gap-5 border-t border-[var(--app-border)] pt-5 md:grid-cols-2">
                   <label className="flex items-center justify-between gap-4">
                     <span>
-                      <span className="block text-sm font-semibold text-slate-800">
+                      <span className="block text-sm font-semibold text-[var(--app-text)]">
                         Sidebar color
                       </span>
-                      <span className="mt-1 block text-xs text-slate-500">
+                      <span className="mt-1 block text-xs text-[var(--app-muted)]">
                         Left navigation background
                       </span>
                     </span>
@@ -1607,17 +1622,17 @@ Audit records are accessible to administrators only. You do not have permission 
                       onChange={(event) =>
                         saveTheme({ ...theme, sidebar: event.target.value })
                       }
-                      className="h-11 w-14 cursor-pointer rounded-lg border border-slate-200 bg-white p-1"
+                      className="h-11 w-14 cursor-pointer rounded-lg border border-[var(--app-border)] bg-[var(--app-surface)] p-1"
                       aria-label="Choose sidebar color"
                     />
                   </label>
 
                   <label className="flex items-center justify-between gap-4">
                     <span>
-                      <span className="block text-sm font-semibold text-slate-800">
+                      <span className="block text-sm font-semibold text-[var(--app-text)]">
                         Content color
                       </span>
-                      <span className="mt-1 block text-xs text-slate-500">
+                      <span className="mt-1 block text-xs text-[var(--app-muted)]">
                         Main page background
                       </span>
                     </span>
@@ -1628,7 +1643,7 @@ Audit records are accessible to administrators only. You do not have permission 
                       onChange={(event) =>
                         saveTheme({ ...theme, content: event.target.value })
                       }
-                      className="h-11 w-14 cursor-pointer rounded-lg border border-slate-200 bg-white p-1"
+                      className="h-11 w-14 cursor-pointer rounded-lg border border-[var(--app-border)] bg-[var(--app-surface)] p-1"
                       aria-label="Choose content color"
                     />
                   </label>
@@ -1644,10 +1659,10 @@ Audit records are accessible to administrators only. You do not have permission 
               </div>
 
               <div className={cardClass}>
-                <h3 className="text-lg font-bold text-[#254735]">
+                <h3 className="text-lg font-bold text-[var(--app-primary)]">
                   Security reminders
                 </h3>
-                <ul className="mt-4 space-y-3 text-sm leading-6 text-slate-600">
+                <ul className="mt-4 space-y-3 text-sm leading-6 text-[var(--app-muted)]">
                   <li>• Sign out when using a shared computer.</li>
                   <li>• Use a unique, strong password for your account.</li>
                   <li>• Verify document ownership and authorization on the server.</li>
@@ -1657,14 +1672,14 @@ Audit records are accessible to administrators only. You do not have permission 
             </>
           )}
 
-          <footer className="mt-10 border-t border-[#e7e5dc] py-5 text-center text-xs text-slate-500">
+          <footer className="mt-10 border-t border-[var(--app-border)] py-5 text-center text-xs text-[var(--app-muted)]">
             AuthenCrypt · Secure document workspace
           </footer>
         </div>
       </section>
       {sharingDocument && (
-  <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#24483d]/40 p-4 backdrop-blur-sm">
-    <div className="w-full max-w-lg rounded-2xl border border-[#d9eee7] bg-[#f4f8f6] p-6 text-slate-800 shadow-2xl">
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
+    <div className="w-full max-w-lg rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface)] p-6 text-[var(--app-text)] shadow-2xl">
       <div className="flex items-center justify-between gap-4">
         <h2 className="text-xl font-semibold">Manage document access</h2>
 
@@ -1674,13 +1689,13 @@ Audit records are accessible to administrators only. You do not have permission 
             setSharingDocument(null);
             setShareMessage("");
           }}
-          className="rounded-xl border border-[#c7dfd5] bg-white px-3 py-1.5 text-sm font-semibold text-[#315c49] transition hover:bg-[#e4f2ec]"
+          className="rounded-xl border border-[var(--app-border)] bg-[var(--app-surface)] px-3 py-1.5 text-sm font-semibold text-[var(--app-primary)] transition hover:bg-[var(--app-hover)]"
         >
           Close
         </button>
       </div>
 
-      <p className="mt-2 break-words text-sm text-slate-600">
+      <p className="mt-2 break-words text-sm text-[var(--app-muted)]">
         Document: {sharingDocument.originalName}
       </p>
 
@@ -1702,7 +1717,7 @@ Audit records are accessible to administrators only. You do not have permission 
           value={shareEmail}
           onChange={(event) => setShareEmail(event.target.value)}
           placeholder="user@example.com"
-          className="w-full rounded-xl border border-[#c7dfd5] bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[#6b9e89] focus:ring-2 focus:ring-[#6b9e89]/20"
+          className="w-full rounded-xl border border-[var(--app-border)] bg-[var(--app-surface)] px-3 py-2.5 text-sm text-[var(--app-text)] outline-none transition focus:border-[var(--app-primary)] focus:ring-2 focus:ring-[#6b9e89]/20"
         />
 
         <label
@@ -1726,7 +1741,7 @@ Audit records are accessible to administrators only. You do not have permission 
         <button
           type="submit"
           disabled={shareLoading}
-          className="w-full rounded-xl bg-[#315c49] px-4 py-2.5 font-semibold text-white transition hover:bg-[#264a39] disabled:cursor-not-allowed disabled:opacity-50"
+          className="w-full rounded-xl bg-[var(--app-primary)] px-4 py-2.5 font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {shareLoading ? "Please wait..." : "Grant access"}
         </button>
@@ -1752,7 +1767,7 @@ Audit records are accessible to administrators only. You do not have permission 
             {sharedUsers.map((item) => (
               <li
                 key={item.id}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#d9eee7] bg-white p-3"
+                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--app-border)] bg-[var(--app-surface)] p-3"
               >
                 <div className="min-w-0">
                   <p className="break-words font-medium">{item.user.name}</p>
