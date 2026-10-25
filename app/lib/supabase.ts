@@ -10,12 +10,21 @@ if (!supabaseUrl || !supabaseServiceRoleKey) {
     "Supabase storage environment variables are missing."
   );
 }
-console.log("Supabase URL diagnostic:", {
-  configured: Boolean(supabaseUrl),
-  startsWithHttps: supabaseUrl?.startsWith("https://"),
-  hasStorageSuffix: supabaseUrl?.includes("/storage/v1"),
-  hasWhitespace: supabaseUrl !== supabaseUrl?.trim(),
-});
+
+try {
+  const parsedUrl = new URL(supabaseUrl);
+
+  console.log("Supabase URL diagnostic:", {
+    configured: true,
+    protocol: parsedUrl.protocol,
+    hostname: parsedUrl.hostname,
+    pathname: parsedUrl.pathname,
+    hasWhitespace: supabaseUrl !== supabaseUrl.trim(),
+  });
+} catch {
+  console.error("Supabase URL diagnostic: Invalid URL format.");
+}
+;
 const supabase = createClient(
   supabaseUrl,
   supabaseServiceRoleKey,
