@@ -2,9 +2,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify } from "jose";
 import prisma from "@/app/lib/prisma";
-import path from "path";
-import { unlink } from "fs/promises";
+import supabase from "@/app/lib/supabase";
 
+const BUCKET = "authencrypt-documents";
 
 async function getAuthenticatedUser(request: NextRequest) {
   const token = request.cookies.get("auth_session")?.value;
@@ -71,17 +71,12 @@ async function getAuthenticatedUser(request: NextRequest) {
   }
 }
 
-// GET: Fetch documents owned by the logged-in user
-
-
- // GET: Fetch documents owned by the user and documents shared with them
+// GET: Fetch documents owned by or shared with the logged-in user.
 export async function GET(request: NextRequest) {
   try {
     const auth = await getAuthenticatedUser(request);
 
-    if ("error" in auth) {
-      return auth.error;
-    }
+    if ("error" in auth) return auth.error;
 
     const documents = await prisma.document.findMany({
       where: {
@@ -116,9 +111,10 @@ export async function GET(request: NextRequest) {
       contentType: document.contentType,
       size: document.size,
       uploadedAt: document.uploadedAt,
-      access: document.ownerId === auth.user.id
-        ? "OWNER"
-        : document.permissions[0]?.permission ?? "READ",
+      access:
+        document.ownerId === auth.user.id
+          ? "OWNER"
+          : document.permissions[0]?.permission ?? "READ",
     }));
 
     return NextResponse.json({ documents: result });
@@ -132,14 +128,12 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// DELETE: Delete only documents owned by the logged-in user
+// DELETE: Remove an owned document from Supabase and the database.
 export async function DELETE(request: NextRequest) {
   try {
     const auth = await getAuthenticatedUser(request);
 
-    if ("error" in auth) {
-      return auth.error;
-    }
+    if ("error" in auth) return auth.error;
 
     const body = await request.json();
     const documentId = body.id;
@@ -165,31 +159,16 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    const uploadDirectory = path.resolve(process.cwd(), "private_uploads");
-    const filePath = path.resolve(
-      uploadDirectory,
-      document.storedName
-    );
+    // Remove the file from the same private Supabase bucket used for uploads.
+    const { error: storageError } = await supabase.storage
+      .from(BUCKET)
+      .remove([document.storedName]);
 
-    // Prevent file paths from escaping private_uploads
-    if (
-      path.dirname(filePath) !== uploadDirectory ||
-      path.basename(document.storedName) !== document.storedName
-    ) {
-      return NextResponse.json(
-        { error: "Invalid stored file path." },
-        { status: 400 }
-      );
-    }
-
-    // Remove the physical file first. Keep the database record if this fails.
-    try {
-      await unlink(filePath);
-    } catch (error) {
-      console.error("Delete stored file error:", error);
+    if (storageError) {
+      console.error("Supabase delete error:", storageError);
 
       return NextResponse.json(
-        { error: "Could not delete the stored file." },
+        { error: "Could not delete the stored document." },
         { status: 500 }
       );
     }
