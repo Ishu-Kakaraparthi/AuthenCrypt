@@ -130,9 +130,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ## Deployment
 
-The project has a deployed application at:
-
-[https://authencrypt.netlify.app/](https://authencrypt.netlify.app/)
+The project has a deployed application at netlify app:
 
 The deployed environment must have the correct database connection, session secret, and private storage configuration. Configure these values through the deployment platform's environment settings rather than committing them to the repository.
 
